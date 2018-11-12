@@ -5,6 +5,13 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
+#ifdef __linux__
+    #define make_dir(path) mkdir(path, 0)
+#else
+    #include <direct.h>
+    #define make_dir(path) _mkdir(path)
+#endif
+
 struct header {
     char magic[4]; // S3P0
     uint32_t entries;
@@ -23,31 +30,31 @@ struct s3v0 {
 
 void convert(const char* path) {
     printf("%s\n", path);
-    
+
     FILE* f = fopen(path, "rb");
     if(!f) {
         printf("Couldn't open!\n");
         return;
     }
-    
+
     char* out = malloc(strlen(path) + strlen(".out") + 1);
     sprintf(out, "%s.out", path);
-    
-    if(mkdir(out, 0) && errno != EEXIST) {
+
+    if(make_dir(out) && errno != EEXIST) {
         printf("Couldn't make out dir\n");
         goto CLEANUP;
     }
-    
+
     struct header h;
     fread(&h, sizeof(h), 1, f);
     if(memcmp(h.magic, "S3P0", 4)) {
         printf("Bad magic!\n");
         goto CLEANUP;
     }
-    
+
     struct entry *entries = malloc(sizeof(struct entry) * h.entries);
     fread(entries, sizeof(struct entry), h.entries, f);
-    
+
     for(uint32_t i = 0; i < h.entries; i++) {
         printf("%f%%\n", (float)(i+1)/(float)h.entries * 100);
         char* out_file = malloc(strlen(out) + 100);
@@ -58,11 +65,11 @@ void convert(const char* path) {
             printf("Couldn't open output %s\n", out_file);
             goto CLEANUP;
         }
-        
+
         fseek(f, entries[i].offset, SEEK_SET);
         void* buffer = malloc(entries[i].length);
         fread(buffer, 1, entries[i].length, f);
-        
+
         struct s3v0 *file_header = (struct s3v0*)buffer;
         if(memcmp(file_header->magic, "S3V0", 4)) {
             printf("Bad magic! Need S3V0 got %c%c%c%c\n",
@@ -74,12 +81,12 @@ void convert(const char* path) {
             free(buffer);
             goto CLEANUP;
         }
-        
+
         fwrite(buffer + file_header->filestart, 1, entries[i].length - file_header->filestart, out_f);
         free(buffer);
         fclose(out_f);
     }
-    
+
     CLEANUP:
         fclose(f);
         free(out);
