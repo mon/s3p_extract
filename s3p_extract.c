@@ -58,7 +58,7 @@ void convert(const char* path) {
     for(uint32_t i = 0; i < h.entries; i++) {
         printf("%f%%\n", (float)(i+1)/(float)h.entries * 100);
         char* out_file = malloc(strlen(out) + 100);
-        sprintf(out_file, "%s/%d.wma", out, i+1);
+        sprintf(out_file, "%s/%d.wma", out, i);
         FILE* out_f = fopen(out_file, "wb");
         free(out_file);
         if(!out_f) {
