@@ -5,8 +5,8 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
-#ifdef __linux__
-    #define make_dir(path) mkdir(path, 0)
+#if defined(__linux__) || defined(__APPLE__)
+    #define make_dir(path) mkdir(path, 0755)
 #else
     #include <direct.h>
     #define make_dir(path) _mkdir(path)
