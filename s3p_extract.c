@@ -26,7 +26,77 @@ struct entry {
 struct s3v0 {
     char magic[4]; // S3V0
     uint32_t filestart;
+    uint64_t padding[3]; //no idea what this is actually for, but we need this to be sized correctly for repacking.
 };
+
+
+void pack(int argc, char** argv){
+    printf("Packing %d files\n", argc - 1);
+
+    char* out_filename = malloc(100);
+    sprintf(out_filename, "out.s3p");
+
+    FILE* out_f = fopen(out_filename, "wb");
+    free(out_filename);
+    if (!out_f){
+        printf("Couldn't create output file %s\n", out_filename);
+        return;
+    }
+
+    struct header h;
+    strcpy(h.magic, "S3P0");
+    h.entries = argc - 1;
+
+    fwrite(&h, sizeof(h), 1, out_f);
+
+    struct entry *entries = malloc(sizeof(struct entry) * argc - 1);
+    memset(entries, 0, sizeof(struct entry) * argc - 1);
+    fwrite(entries, sizeof(struct entry), argc - 1, out_f);
+
+    for(int i = 1; i < argc; i++){
+        printf("Packing %s\n", argv[i]);
+
+        entries[i - 1].offset = ftell(out_f);
+        FILE* audio = fopen(argv[i], "rb");
+        if (!audio){
+            printf("Error opening %s\n", argv[i]);
+            fclose(out_f);
+            return;
+        }
+
+        int length = 0;
+        fseek(audio, 0, SEEK_END);
+        length = ftell(audio);
+        rewind(audio);
+
+        struct s3v0 *audio_header = malloc(sizeof(struct s3v0));
+        strcpy(audio_header->magic, "S3V0");
+        audio_header->filestart = 0x20;
+
+        fwrite(audio_header, sizeof(struct s3v0), 1, out_f);
+
+        char* buffer = malloc(length);
+        fread(buffer, 1, length, audio);
+        fwrite(buffer, 1, length, out_f);
+
+        entries[i - 1].length = ftell(out_f) - entries[i - 1].offset;
+
+        free(buffer);
+        free(audio_header);
+        fclose(audio);
+    }
+
+    uint32_t endbytes = 0x12345678;
+    fwrite(&endbytes, sizeof(uint32_t), 1, out_f);
+
+    //Repopulate the entries now that they have relevant offsets
+    fseek(out_f, sizeof(struct header), 0);
+    fwrite(entries, sizeof(struct entry), argc - 1, out_f);
+
+
+    fclose(out_f);
+
+}
 
 void convert(const char* path) {
     printf("%s\n", path);
@@ -97,6 +167,11 @@ int main(int argc, char** argv) {
         printf("Usage: s3p_extract file.s3p [file2.s3p] [file3.s3p]\n");
         return 1;
     }
+
+    pack(argc, argv);
+
+    return 0;
+
     for(int i = 1; i < argc; i++) {
         convert(argv[i]);
     }
