@@ -26,7 +26,8 @@ struct entry {
 struct s3v0 {
     char magic[4]; // S3V0
     uint32_t filestart;
-    uint64_t padding[3]; //no idea what this is actually for, but we need this to be sized correctly for repacking.
+    uint32_t length;
+    uint64_t padding[2]; //no idea what this is actually for, but we need this to be sized correctly for repacking.
 };
 
 
@@ -72,6 +73,7 @@ void pack(int argc, char** argv){
         struct s3v0 *audio_header = malloc(sizeof(struct s3v0));
         strcpy(audio_header->magic, "S3V0");
         audio_header->filestart = 0x20;
+        audio_header->length = length;
 
         fwrite(audio_header, sizeof(struct s3v0), 1, out_f);
 
