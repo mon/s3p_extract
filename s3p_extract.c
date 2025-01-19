@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    if (strcmp(argv[1], "-pack")){
+    if (strcmp(argv[1], "-pack") == 0){
         pack(argc - 2, &argv[2]);
         return 0;
     }
