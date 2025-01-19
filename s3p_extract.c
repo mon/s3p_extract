@@ -31,8 +31,12 @@ struct s3v0 {
 };
 
 
-void pack(int argc, char** argv){
-    printf("Packing %d files\n", argc - 1);
+void pack(int infile_ct, char** infiles){
+    printf("Packing %d files\n", infile_ct);
+
+    for (int i = 0; i < infile_ct; i++){
+        printf("and we do the %s\n", infiles[i]);
+    }
 
     char* out_filename = malloc(100);
     sprintf(out_filename, "out.s3p");
@@ -46,21 +50,21 @@ void pack(int argc, char** argv){
 
     struct header h;
     strncpy(h.magic, "S3P0", 4);
-    h.entries = argc - 1;
-
+    h.entries = infile_ct;
+    
     fwrite(&h, sizeof(h), 1, out_f);
 
-    struct entry *entries = malloc(sizeof(struct entry) * argc - 1);
-    memset(entries, 0, sizeof(struct entry) * argc - 1);
-    fwrite(entries, sizeof(struct entry), argc - 1, out_f);
+    struct entry *entries = malloc(sizeof(struct entry) * infile_ct);
+    memset(entries, 0, sizeof(struct entry) * infile_ct);
+    fwrite(entries, sizeof(struct entry), infile_ct, out_f);
 
-    for(int i = 1; i < argc; i++){
-        printf("Packing %s\n", argv[i]);
+    for(int i = 0; i < infile_ct; i++){
+        printf("Packing %s\n", infiles[i]);
 
-        entries[i - 1].offset = ftell(out_f);
-        FILE* audio = fopen(argv[i], "rb");
+        entries[i].offset = ftell(out_f);
+        FILE* audio = fopen(infiles[i], "rb");
         if (!audio){
-            printf("Error opening %s\n", argv[i]);
+            printf("Error opening %s\n", infiles[i]);
             fclose(out_f);
             return;
         }
@@ -81,23 +85,21 @@ void pack(int argc, char** argv){
         fread(buffer, 1, length, audio);
         fwrite(buffer, 1, length, out_f);
 
-        entries[i - 1].length = ftell(out_f) - entries[i - 1].offset;
-
+        entries[i].length = ftell(out_f) - entries[i].offset;
+        
         free(buffer);
         free(audio_header);
         fclose(audio);
     }
-
+    
     uint32_t endbytes = 0x12345678;
     fwrite(&endbytes, sizeof(uint32_t), 1, out_f);
 
     //Repopulate the entries now that they have relevant offsets
     fseek(out_f, sizeof(struct header), 0);
-    fwrite(entries, sizeof(struct entry), argc - 1, out_f);
-
+    fwrite(entries, sizeof(struct entry), infile_ct, out_f);
 
     fclose(out_f);
-
 }
 
 void convert(const char* path) {
