@@ -45,7 +45,7 @@ void pack(int argc, char** argv){
     }
 
     struct header h;
-    strcpy(h.magic, "S3P0");
+    strncpy(h.magic, "S3P0", 4);
     h.entries = argc - 1;
 
     fwrite(&h, sizeof(h), 1, out_f);
@@ -71,7 +71,7 @@ void pack(int argc, char** argv){
         rewind(audio);
 
         struct s3v0 *audio_header = malloc(sizeof(struct s3v0));
-        strcpy(audio_header->magic, "S3V0");
+        strncpy(audio_header->magic, "S3V0", 4);
         audio_header->filestart = 0x20;
         audio_header->length = length;
 
@@ -166,13 +166,16 @@ void convert(const char* path) {
 
 int main(int argc, char** argv) {
     if(argc < 2) {
-        printf("Usage: s3p_extract file.s3p [file2.s3p] [file3.s3p]\n");
+        printf("Usage:\n");
+        printf("Unpack: s3p_extract file.s3p [file2.s3p] [file3.s3p]\n");
+        printf("Repack: s3p_extract -pack file.wma [file2.wma] [file3.wma]\n"); 
         return 1;
     }
-
-    pack(argc, argv);
-
-    return 0;
+    
+    if (strcmp(argv[1], "-pack")){
+        pack(argc - 2, &argv[2]);
+        return 0;
+    }
 
     for(int i = 1; i < argc; i++) {
         convert(argv[i]);

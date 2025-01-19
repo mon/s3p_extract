@@ -1,3 +1,3 @@
 quickly hacked together, but it works.
 
-No plans for repacking.
+Now with repacking!
