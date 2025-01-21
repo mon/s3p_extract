@@ -27,38 +27,32 @@ struct s3v0 {
     char magic[4]; // S3V0
     uint32_t filestart;
     uint32_t length;
-    uint64_t padding[2]; //no idea what this is actually for, but we need this to be sized correctly for repacking.
+    
+    uint8_t unknown[20];
 };
 
 
-void pack(int infile_ct, char** infiles){
-    printf("Packing %d files\n", infile_ct);
-
-    for (int i = 0; i < infile_ct; i++){
-        printf("and we do the %s\n", infiles[i]);
-    }
-
-    char* out_filename = malloc(100);
-    sprintf(out_filename, "out.s3p");
+void pack(int infile_count, char** infiles, char* out_filename){
+    printf("Packing %d files\n", infile_count);
 
     FILE* out_f = fopen(out_filename, "wb");
-    free(out_filename);
     if (!out_f){
         printf("Couldn't create output file %s\n", out_filename);
         return;
     }
 
-    struct header h;
-    strncpy(h.magic, "S3P0", 4);
-    h.entries = infile_ct;
-    
+    struct header h = {
+        .magic = "S3P0",
+        .entries = infile_count
+    };
+
     fwrite(&h, sizeof(h), 1, out_f);
 
-    struct entry *entries = malloc(sizeof(struct entry) * infile_ct);
-    memset(entries, 0, sizeof(struct entry) * infile_ct);
-    fwrite(entries, sizeof(struct entry), infile_ct, out_f);
+    struct entry *entries = malloc(sizeof(struct entry) * infile_count);
+    memset(entries, 0, sizeof(struct entry) * infile_count);
+    fwrite(entries, sizeof(struct entry), infile_count, out_f);
 
-    for(int i = 0; i < infile_ct; i++){
+    for(int i = 0; i < infile_count; i++){
         printf("Packing %s\n", infiles[i]);
 
         entries[i].offset = ftell(out_f);
@@ -74,30 +68,30 @@ void pack(int infile_ct, char** infiles){
         length = ftell(audio);
         rewind(audio);
 
-        struct s3v0 *audio_header = malloc(sizeof(struct s3v0));
-        strncpy(audio_header->magic, "S3V0", 4);
-        audio_header->filestart = 0x20;
-        audio_header->length = length;
+        struct s3v0 audio_header= {
+            .magic = "S3V0",
+            .filestart = 0x20,
+            .length = length
+        };
 
-        fwrite(audio_header, sizeof(struct s3v0), 1, out_f);
+        fwrite(&audio_header, sizeof(struct s3v0), 1, out_f);
 
-        char* buffer = malloc(length);
+        uint8_t* buffer = malloc(length);
         fread(buffer, 1, length, audio);
         fwrite(buffer, 1, length, out_f);
 
         entries[i].length = ftell(out_f) - entries[i].offset;
         
         free(buffer);
-        free(audio_header);
         fclose(audio);
     }
     
-    uint32_t endbytes = 0x12345678;
+    uint32_t endbytes = 0x12345678; //Unclear what this value is for
     fwrite(&endbytes, sizeof(uint32_t), 1, out_f);
 
     //Repopulate the entries now that they have relevant offsets
     fseek(out_f, sizeof(struct header), 0);
-    fwrite(entries, sizeof(struct entry), infile_ct, out_f);
+    fwrite(entries, sizeof(struct entry), infile_count, out_f);
 
     fclose(out_f);
 }
@@ -170,12 +164,17 @@ int main(int argc, char** argv) {
     if(argc < 2) {
         printf("Usage:\n");
         printf("Unpack: s3p_extract file.s3p [file2.s3p] [file3.s3p]\n");
-        printf("Repack: s3p_extract -pack file.wma [file2.wma] [file3.wma]\n"); 
+        printf("Repack: s3p_extract -pack [-o filename.s3p] file.wma [file2.wma] [file3.wma]\n"); 
         return 1;
     }
     
     if (strcmp(argv[1], "-pack") == 0){
-        pack(argc - 2, &argv[2]);
+        if (strcmp(argv[2], "-o") == 0){
+            pack(argc - 4, &argv[4], argv[3]);
+        }
+        else{
+            pack(argc - 2, &argv[2], "out.s3p");
+        }
         return 0;
     }
 
