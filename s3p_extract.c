@@ -161,19 +161,23 @@ void convert(const char* path) {
 }
 
 int main(int argc, char** argv) {
-    if(argc < 2) {
+    if(argc < 2 || strcmp(argv[argc - 1], "-o") == 0 || strcmp(argv[argc - 1], "-pack") == 0) {
         printf("Usage:\n");
         printf("Unpack: s3p_extract file.s3p [file2.s3p] [file3.s3p]\n");
         printf("Repack: s3p_extract -pack [-o filename.s3p] file.wma [file2.wma] [file3.wma]\n"); 
         return 1;
     }
-    
+
     if (strcmp(argv[1], "-pack") == 0){
-        if (strcmp(argv[2], "-o") == 0 && argc >= 3){
+        if (strcmp(argv[2], "-o") == 0){
+            if (argc < 5){
+                printf("Enter at least one input file\n");
+                return 1;
+            }
             pack(argc - 4, &argv[4], argv[3]);
         }
         else{
-            pack(argc - 2, &argv[2], "out.s3p");
+            pack(argc-2, &argv[2], "out.s3p");
         }
         return 0;
     }
